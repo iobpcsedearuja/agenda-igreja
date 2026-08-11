@@ -91,6 +91,19 @@ textarea{min-height:80px;resize:vertical;}
 .btn-approve:hover{background:#C8E6C9;}
 .btn-reject{background:#FDE8E8;color:#C62828;}
 .btn-reject:hover{background:#FFCDD2;}
+.btn-delete{background:#FFF0F0;color:#B42318;border:1px solid #FDA29B;margin-top:8px;width:100%;}
+.btn-delete:hover{background:#FEE4E2;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:1000;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:white;border-radius:16px;padding:20px;width:100%;max-width:430px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:6px;color:#1D1D1F;}
+.modal-description{font-size:13px;color:#6E6E73;margin-bottom:14px;line-height:1.4;}
+.modal-event{background:#F5F5F7;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;font-weight:600;}
+.modal-actions{display:flex;gap:8px;margin-top:14px;}
+.modal-actions button{flex:1;padding:11px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
+.btn-cancel{background:#E5E5EA;color:#1D1D1F;}
+.btn-confirm-delete{background:#C62828;color:white;}
+.btn-confirm-delete:disabled{background:#C7C7CC;cursor:not-allowed;}
 .empty-state{text-align:center;padding:2.5rem 1rem;color:#6E6E73;font-size:14px;}
 .link-item{background:white;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
 .link-avatar{width:36px;height:36px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3C3489;flex-shrink:0;}
@@ -201,6 +214,21 @@ textarea{min-height:80px;resize:vertical;}
   </div>
 </div>
 
+<div class="modal-overlay" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="delete-modal-title">Excluir evento</div>
+    <div class="modal-description">Esta ação remove o evento da agenda. A justificativa ficará registrada para controle da Secretaria.</div>
+    <div class="modal-event" id="delete-event-name"></div>
+    <label class="form-label" for="delete-reason">Justificativa da exclusão *</label>
+    <textarea id="delete-reason" maxlength="500" placeholder="Informe por que este evento está sendo excluído"></textarea>
+    <div class="msg msg-error" id="delete-error"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
+      <button type="button" class="btn-confirm-delete" id="btn-confirm-delete" onclick="confirmDeleteEvent()">Excluir evento</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbxwsXxCO7k9SfSyrjit4rcbM18Siq1xRVYVGpmIMwhEv26a4c89dQKXhhLAClENVmBZDg/exec';
 const APP_URL=window.location.href.split('?')[0];
@@ -230,7 +258,7 @@ const LIDERES=[
   {nome:'Pr. Bernardo e Dca. Vanderlucia',dept:'Capelania e Evangelismo'},
 ];
 
-let events=[],currentMonth=new Date(),selectedDate=null,adminFilter='todos',liderAtual=null,allLinks=[];
+let events=[],currentMonth=new Date(),selectedDate=null,adminFilter='todos',liderAtual=null,allLinks=[],pendingDeleteId=null;
 currentMonth.setDate(1);
 
 function getInitials(n){return n.split(' ').filter(w=>w.length>1).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
@@ -384,7 +412,41 @@ function renderAdmin(){
   f.sort((a,b)=>a.data.localeCompare(b.data));
   const list=document.getElementById('admin-list');
   if(!f.length){list.innerHTML='<div class="empty-state">Nenhum evento encontrado.</div>';return;}
-  list.innerHTML=f.map(e=>`<div class="event-card status-${escapeHtml(e.status)}"><div class="event-title">${escapeHtml(e.nome)}</div><div class="event-meta">${escapeHtml(fmtDate(e.data))} · ${escapeHtml(e.inicio)}–${escapeHtml(e.fim)} · ${escapeHtml(e.local)}</div><div class="event-badges"><span class="badge badge-dept">${escapeHtml(e.dept)}</span><span class="badge badge-${escapeHtml(e.status)}">${escapeHtml(e.status.charAt(0).toUpperCase()+e.status.slice(1))}</span></div>${e.obs?`<div class="event-meta" style="margin-top:6px;">${escapeHtml(e.obs)}</div>`:''}${e.status==='pendente'?`<div class="action-row"><button class="btn-sm btn-approve" onclick="updateStatus(decodeURIComponent('${encodeURIComponent(String(e.id))}'),'aprovado',this)">✓ Aprovar</button><button class="btn-sm btn-reject" onclick="updateStatus(decodeURIComponent('${encodeURIComponent(String(e.id))}'),'recusado',this)">✗ Recusar</button></div>`:''}</div>`).join('');
+  list.innerHTML=f.map(e=>`<div class="event-card status-${escapeHtml(e.status)}"><div class="event-title">${escapeHtml(e.nome)}</div><div class="event-meta">${escapeHtml(fmtDate(e.data))} · ${escapeHtml(e.inicio)}–${escapeHtml(e.fim)} · ${escapeHtml(e.local)}</div><div class="event-badges"><span class="badge badge-dept">${escapeHtml(e.dept)}</span><span class="badge badge-${escapeHtml(e.status)}">${escapeHtml(e.status.charAt(0).toUpperCase()+e.status.slice(1))}</span></div>${e.obs?`<div class="event-meta" style="margin-top:6px;">${escapeHtml(e.obs)}</div>`:''}${e.status==='pendente'?`<div class="action-row"><button class="btn-sm btn-approve" onclick="updateStatus(decodeURIComponent('${encodeURIComponent(String(e.id))}'),'aprovado',this)">✓ Aprovar</button><button class="btn-sm btn-reject" onclick="updateStatus(decodeURIComponent('${encodeURIComponent(String(e.id))}'),'recusado',this)">✗ Recusar</button></div>`:''}<button class="btn-sm btn-delete" onclick="openDeleteModal(decodeURIComponent('${encodeURIComponent(String(e.id))}'))">Excluir evento</button></div>`).join('');
+}
+
+function openDeleteModal(id){
+  const evento=events.find(e=>String(e.id)===String(id));
+  if(!evento){alert('Evento não encontrado. Atualize a página e tente novamente.');return;}
+  pendingDeleteId=String(id);
+  document.getElementById('delete-event-name').textContent=evento.nome+' — '+fmtDate(evento.data);
+  document.getElementById('delete-reason').value='';
+  document.getElementById('delete-error').classList.remove('show');
+  document.getElementById('delete-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('delete-reason').focus(),50);
+}
+
+function closeDeleteModal(){
+  if(document.getElementById('btn-confirm-delete').disabled)return;
+  pendingDeleteId=null;
+  document.getElementById('delete-modal').classList.remove('show');
+}
+
+async function confirmDeleteEvent(){
+  const justificativa=document.getElementById('delete-reason').value.trim();
+  const errorBox=document.getElementById('delete-error');
+  if(justificativa.length<5){errorBox.textContent='Informe uma justificativa com pelo menos 5 caracteres.';errorBox.classList.add('show');return;}
+  if(!pendingDeleteId)return;
+  const id=pendingDeleteId,btn=document.getElementById('btn-confirm-delete');
+  btn.disabled=true;btn.textContent='Excluindo...';errorBox.classList.remove('show');
+  try{
+    const res=await apiRequest(API_URL,{method:'POST',body:JSON.stringify({action:'deleteEvent',id,justificativa,excluidoPor:'Secretaria'})},30000);
+    if(!res.success)throw new Error(res.error||res.message||'O servidor não confirmou a exclusão.');
+    await fetchEvents();
+    if(events.some(e=>String(e.id)===id))throw new Error('O evento ainda aparece na agenda. Atualize a página antes de tentar novamente.');
+    pendingDeleteId=null;document.getElementById('delete-modal').classList.remove('show');
+  }catch(e){errorBox.textContent=getErrorMessage(e,'Não foi possível excluir o evento.');errorBox.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Excluir evento';}
 }
 
 async function updateStatus(id,status,btn){
