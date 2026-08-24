@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Consulte os próximos eventos da igreja.">
+<meta name="theme-color" content="#332b7a">
+<title>Agenda Pública da Igreja</title>
+<style>
+:root{--brand:#3c3489;--brand-dark:#292361;--soft:#eeedfe;--ink:#1d1d1f;--muted:#6e6e73;--line:#e3e3e8;--bg:#f6f6f8;--white:#fff;--green:#237a3b}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+.hero{background:linear-gradient(145deg,var(--brand-dark),#5148ae);color:#fff;padding:28px 18px 72px;position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:210px;height:210px;border:35px solid rgba(255,255,255,.06);border-radius:50%;right:-90px;top:-80px}.hero-inner,.page{max-width:760px;margin:auto}.brand-logo-wrap{display:inline-flex;background:#fff;border-radius:14px;padding:9px 14px;margin-bottom:20px;box-shadow:0 8px 24px rgba(20,16,54,.22)}.brand-logo{display:block;width:min(310px,72vw);height:auto}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#d9d6ff;margin-bottom:10px}.hero h1{font-size:30px;line-height:1.1;letter-spacing:-.03em;margin-bottom:10px}.hero p{color:#e5e3ff;font-size:15px;line-height:1.5;max-width:540px}
+.page{padding:0 16px 40px;margin-top:-42px;position:relative}.filters{background:var(--white);border-radius:18px;padding:14px;box-shadow:0 10px 30px rgba(30,24,75,.12);display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}.field label{display:block;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px 2px}.field select{width:100%;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);padding:11px 34px 11px 11px;font:inherit;font-size:14px}.status{font-size:13px;color:var(--muted);margin:4px 2px 14px}.status.error{color:#b42318}.month-group{margin-bottom:24px}.month-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:0 0 10px 3px}.event-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;border:1px solid #ededf1;box-shadow:0 2px 8px rgba(0,0,0,.035);display:grid;grid-template-columns:58px 1fr;gap:14px}.date-box{background:var(--soft);color:var(--brand);border-radius:12px;text-align:center;padding:8px 4px;height:62px}.date-day{font-size:24px;line-height:26px;font-weight:800}.date-week{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.event-title{font-size:16px;font-weight:750;line-height:1.25;margin-bottom:4px}.event-theme{font-size:13px;color:var(--brand);margin-bottom:7px}.event-meta{font-size:13px;color:var(--muted);line-height:1.6}.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.tag{font-size:11px;font-weight:700;border-radius:20px;padding:4px 9px;background:#f2f2f5;color:#555}.actions{display:flex;gap:8px;margin-top:12px}.action{border:none;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;background:var(--soft);color:var(--brand)}.action.share{background:#e8f6eb;color:var(--green)}.empty{background:#fff;border-radius:16px;text-align:center;padding:48px 20px;color:var(--muted);border:1px solid var(--line)}.empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:5px}.footer{text-align:center;color:var(--muted);font-size:11px;padding-top:18px}.loading-card{height:122px;background:linear-gradient(90deg,#fff,#f0f0f4,#fff);background-size:200% 100%;animation:shine 1.2s infinite;border-radius:16px;margin-bottom:10px}@keyframes shine{to{background-position:-200% 0}}
+@media(max-width:520px){.hero{padding-top:28px}.hero h1{font-size:26px}.filters{grid-template-columns:1fr}.event-card{grid-template-columns:52px 1fr;padding:14px;gap:11px}.date-box{height:58px}.actions{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="hero-inner"><div class="brand-logo-wrap"><img class="brand-logo" src="logo-iobpc.png" alt="Igreja O Brasil para Cristo"></div><div class="eyebrow">IOBPC Sede Arujá</div><h1>Agenda da Igreja</h1><p>Confira nossos próximos cultos, encontros e atividades. Esperamos você e sua família.</p></div></header>
+<main class="page">
+  <section class="filters" aria-label="Filtros da agenda">
+    <div class="field"><label for="month-filter">Mês</label><select id="month-filter"><option value="">Todos os próximos meses</option></select></div>
+    <div class="field"><label for="dept-filter">Departamento</label><select id="dept-filter"><option value="">Todos os departamentos</option></select></div>
+  </section>
+  <div class="status" id="status" role="status">Carregando próximos eventos...</div>
+  <section id="event-list" aria-live="polite"><div class="loading-card"></div><div class="loading-card"></div></section>
+  <footer class="footer">Agenda atualizada pela Secretaria da Igreja</footer>
+</main>
+<script>
+const API_URL='https://script.google.com/macros/s/AKfycbxwsXxCO7k9SfSyrjit4rcbM18Siq1xRVYVGpmIMwhEv26a4c89dQKXhhLAClENVmBZDg/exec';
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WEEK=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+let events=[];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const dateParts=s=>{const[y,m,d]=s.split('-').map(Number);return{y,m,d,date:new Date(y,m-1,d)}};
+const monthKey=s=>s.slice(0,7);
+const monthLabel=k=>{const[y,m]=k.split('-').map(Number);return MONTHS[m-1]+' '+y};
+function googleCalendarUrl(e){
+  const clean=t=>String(t||'').replace(':','')+'00';
+  const start=e.data.replaceAll('-','')+'T'+clean(e.inicio);
+  const end=e.data.replaceAll('-','')+'T'+clean(e.fim);
+  const details=[e.tema,e.dept?'Departamento: '+e.dept:''].filter(Boolean).join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(e.nome)+'&dates='+start+'/'+end+'&ctz=America%2FSao_Paulo&location='+encodeURIComponent(e.local||'')+'&details='+encodeURIComponent(details);
+}
+function whatsappUrl(e){
+  const p=dateParts(e.data),text='📅 '+e.nome+'\n🗓️ '+String(p.d).padStart(2,'0')+'/'+String(p.m).padStart(2,'0')+'/'+p.y+' às '+e.inicio+'\n📍 '+e.local+'\n\nVeja a agenda da igreja: '+location.href.split('?')[0];
+  return 'https://wa.me/?text='+encodeURIComponent(text);
+}
+function fillFilters(){
+  const months=[...new Set(events.map(e=>monthKey(e.data)))],depts=[...new Set(events.map(e=>e.dept).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  document.getElementById('month-filter').innerHTML='<option value="">Todos os próximos meses</option>'+months.map(k=>`<option value="${esc(k)}">${esc(monthLabel(k))}</option>`).join('');
+  document.getElementById('dept-filter').innerHTML='<option value="">Todos os departamentos</option>'+depts.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+}
+function render(){
+  const month=document.getElementById('month-filter').value,dept=document.getElementById('dept-filter').value;
+  const filtered=events.filter(e=>(!month||monthKey(e.data)===month)&&(!dept||e.dept===dept));
+  document.getElementById('status').textContent=filtered.length===1?'1 próximo evento':filtered.length+' próximos eventos';
+  if(!filtered.length){document.getElementById('event-list').innerHTML='<div class="empty"><strong>Nenhum evento encontrado</strong>Tente selecionar outro mês ou departamento.</div>';return;}
+  const groups=Object.groupBy?Object.groupBy(filtered,e=>monthKey(e.data)):filtered.reduce((a,e)=>((a[monthKey(e.data)]??=[]).push(e),a),{});
+  document.getElementById('event-list').innerHTML=Object.entries(groups).map(([key,list])=>`<div class="month-group"><h2 class="month-title">${esc(monthLabel(key))}</h2>${list.map(e=>{const p=dateParts(e.data);return `<article class="event-card"><div class="date-box"><div class="date-day">${p.d}</div><div class="date-week">${WEEK[p.date.getDay()]}</div></div><div><h3 class="event-title">${esc(e.nome)}</h3>${e.tema?`<div class="event-theme">${esc(e.tema)}</div>`:''}<div class="event-meta">${esc(e.inicio)}–${esc(e.fim)} · ${esc(e.local)}</div><div class="tags">${e.dept?`<span class="tag">${esc(e.dept)}</span>`:''}</div><div class="actions"><a class="action" target="_blank" rel="noopener" href="${googleCalendarUrl(e)}">+ Google Agenda</a><a class="action share" target="_blank" rel="noopener" href="${whatsappUrl(e)}">Compartilhar</a></div></div></article>`}).join('')}</div>`).join('');
+}
+async function load(){
+  try{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+    const response=await fetch(API_URL+'?action=getPublicEvents&_='+Date.now(),{cache:'no-store',signal:controller.signal});clearTimeout(timer);
+    const data=await response.json();if(!response.ok||!Array.isArray(data))throw new Error();
+    events=data;fillFilters();render();
+  }catch(_){document.getElementById('status').textContent='Não foi possível atualizar a agenda.';document.getElementById('status').classList.add('error');document.getElementById('event-list').innerHTML='<div class="empty"><strong>Agenda temporariamente indisponível</strong>Tente novamente em alguns minutos.</div>'}
+}
+document.getElementById('month-filter').addEventListener('change',render);document.getElementById('dept-filter').addEventListener('change',render);load();
+</script>
+</body>
+</html>
