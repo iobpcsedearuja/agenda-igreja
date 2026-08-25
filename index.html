@@ -231,6 +231,7 @@ textarea{min-height:80px;resize:vertical;}
 
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbxwsXxCO7k9SfSyrjit4rcbM18Siq1xRVYVGpmIMwhEv26a4c89dQKXhhLAClENVmBZDg/exec';
+const BIRTHDAYS_URL='https://firestore.googleapis.com/v1/projects/iobpc-cadastro-membros/databases/(default)/documents/aniversarios?pageSize=1000';
 const APP_URL=window.location.href.split('?')[0];
 const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const LIDERES=[
@@ -258,12 +259,15 @@ const LIDERES=[
   {nome:'Pr. Bernardo e Dca. Vanderlucia',dept:'Capelania e Evangelismo'},
 ];
 
-let events=[],currentMonth=new Date(),selectedDate=null,adminFilter='todos',liderAtual=null,allLinks=[],pendingDeleteId=null;
+let events=[],birthdays=[],currentMonth=new Date(),selectedDate=null,adminFilter='todos',liderAtual=null,allLinks=[],pendingDeleteId=null;
 currentMonth.setDate(1);
 
 function getInitials(n){return n.split(' ').filter(w=>w.length>1).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function getErrorMessage(e,fallback){return e&&e.message?e.message:fallback;}
+function birthdayEvent(fields){const value=k=>fields[k]?.stringValue||'',today=new Date();let year=today.getFullYear(),date=year+'-'+value('mes')+'-'+value('dia');const todayText=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');if(date<todayText){year++;date=year+'-'+value('mes')+'-'+value('dia')}return{id:'aniversario-'+year+'-'+value('nome'),nome:'🎂 Aniversário de '+value('nome'),data:date,inicio:'00:00',fim:'23:59',local:value('congregacao'),tema:'Celebração de aniversário',dept:'Aniversários',status:'aprovado',obs:''}}
+async function fetchBirthdays(){try{const r=await fetch(BIRTHDAYS_URL+'&_='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error();const data=await r.json();return(data.documents||[]).map(d=>birthdayEvent(d.fields||{})).filter(e=>e.data.length===10&&e.nome!=='🎂 Aniversário de ')}catch(_){return[]}}
+function calendarEvents(){return[...events.filter(e=>e.status==='aprovado'),...birthdays]}
 
 async function apiRequest(url,options={},timeout=20000){
   const controller=new AbortController();
@@ -289,8 +293,9 @@ function initSelect(){
 async function fetchEvents(){
   setSyncState('loading','Sincronizando com Google Sheets...');
   try{
-    const d=await apiRequest(API_URL+'?action=getEvents&_='+Date.now());
+    const [d,b]=await Promise.all([apiRequest(API_URL+'?action=getEvents&_='+Date.now()),fetchBirthdays()]);
     events=Array.isArray(d)?d:[];
+    birthdays=b;
     setSyncState('ok','Sincronizado ✓');
     renderCalendar();renderAdmin();updateStats();
   }catch(e){
@@ -322,7 +327,7 @@ function renderCalendar(){
   const g=document.getElementById('cal-grid');g.innerHTML='';
   ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>{const e=document.createElement('div');e.className='cal-day-name';e.textContent=d;g.appendChild(e);});
   const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),td=new Date();
-  const ap=events.filter(e=>e.status==='aprovado');
+  const ap=calendarEvents();
   for(let i=0;i<fd;i++){const e=document.createElement('div');e.className='cal-day empty';g.appendChild(e);}
   for(let d=1;d<=dim;d++){
     const el=document.createElement('div');el.className='cal-day';el.textContent=d;
@@ -338,7 +343,7 @@ function renderCalendar(){
 
 function renderEventList(){
   const list=document.getElementById('cal-events-list'),title=document.getElementById('cal-events-title');
-  const ap=events.filter(e=>e.status==='aprovado');
+  const ap=calendarEvents();
   let f=selectedDate?ap.filter(e=>e.data===selectedDate):ap;
   if(!selectedDate){
     const hoje=new Date(),hojeStr=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');

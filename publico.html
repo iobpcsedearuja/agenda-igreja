@@ -27,6 +27,7 @@
 </main>
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbxwsXxCO7k9SfSyrjit4rcbM18Siq1xRVYVGpmIMwhEv26a4c89dQKXhhLAClENVmBZDg/exec';
+const BIRTHDAYS_URL='https://firestore.googleapis.com/v1/projects/iobpc-cadastro-membros/databases/(default)/documents/aniversarios?pageSize=1000';
 const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WEEK=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 let events=[];
@@ -34,6 +35,8 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const dateParts=s=>{const[y,m,d]=s.split('-').map(Number);return{y,m,d,date:new Date(y,m-1,d)}};
 const monthKey=s=>s.slice(0,7);
 const monthLabel=k=>{const[y,m]=k.split('-').map(Number);return MONTHS[m-1]+' '+y};
+function birthdayEvent(fields){const value=k=>fields[k]?.stringValue||'',today=new Date();let year=today.getFullYear(),date=year+'-'+value('mes')+'-'+value('dia');const todayText=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');if(date<todayText){year++;date=year+'-'+value('mes')+'-'+value('dia')}return{id:'aniversario-'+year+'-'+value('nome'),nome:'🎂 Aniversário de '+value('nome'),data:date,inicio:'00:00',fim:'23:59',local:value('congregacao'),tema:'Celebração de aniversário',dept:'Aniversários',status:'aprovado'}}
+async function loadBirthdays(){try{const response=await fetch(BIRTHDAYS_URL+'&_='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error();const data=await response.json();return(data.documents||[]).map(d=>birthdayEvent(d.fields||{})).filter(e=>e.data.length===10&&e.nome!=='🎂 Aniversário de ')}catch(_){return[]}}
 function googleCalendarUrl(e){
   const clean=t=>String(t||'').replace(':','')+'00';
   const start=e.data.replaceAll('-','')+'T'+clean(e.inicio);
@@ -61,9 +64,9 @@ function render(){
 async function load(){
   try{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
-    const response=await fetch(API_URL+'?action=getPublicEvents&_='+Date.now(),{cache:'no-store',signal:controller.signal});clearTimeout(timer);
+    const [response,birthdayEvents]=await Promise.all([fetch(API_URL+'?action=getPublicEvents&_='+Date.now(),{cache:'no-store',signal:controller.signal}),loadBirthdays()]);clearTimeout(timer);
     const data=await response.json();if(!response.ok||!Array.isArray(data))throw new Error();
-    events=data;fillFilters();render();
+    events=[...data,...birthdayEvents].sort((a,b)=>a.data.localeCompare(b.data)||a.inicio.localeCompare(b.inicio));fillFilters();render();
   }catch(_){document.getElementById('status').textContent='Não foi possível atualizar a agenda.';document.getElementById('status').classList.add('error');document.getElementById('event-list').innerHTML='<div class="empty"><strong>Agenda temporariamente indisponível</strong>Tente novamente em alguns minutos.</div>'}
 }
 document.getElementById('month-filter').addEventListener('change',render);document.getElementById('dept-filter').addEventListener('change',render);load();
